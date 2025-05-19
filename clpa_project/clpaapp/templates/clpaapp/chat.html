@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CLPA Chatbot</title>
+  <style>
+    body {
+      font-family: Arial;
+      background-color: #f4f4f4;
+      margin: 0; padding: 0;
+    }
+    #chat-box {
+      width: 90%;
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      padding: 10px;
+      border-radius: 10px;
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+    }
+    .msg { margin: 10px 0; }
+    .user { color: blue; }
+    .bot { color: green; }
+    #chat-form {
+      width: 90%;
+      max-width: 600px;
+      margin: 0 auto 20px auto;
+      display: flex;
+    }
+    #user-input {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="chat-box"></div>
+
+  <form id="chat-form">
+    {% csrf_token %}
+    <input type="text" id="user-input" placeholder="Ask something..." autocomplete="off" required />
+    <button type="submit">Send</button>
+  </form>
+
+  <script>
+    const chatBox = document.getElementById('chat-box');
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
+
+    chatForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      appendMessage(message, 'user');
+      userInput.value = '';
+
+      fetch('/chat/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: `message=${encodeURIComponent(message)}`
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.error){
+          appendMessage("Error: " + data.error, 'bot');
+          return;
+        }
+        appendMessage(data.response, 'bot');
+
+        if(data.url){
+          window.open(data.url, '_blank');
+        }
+      })
+      .catch(() => appendMessage("Error connecting to server.", 'bot'));
+    });
+
+    function appendMessage(message, sender) {
+      const div = document.createElement('div');
+      div.className = `msg ${sender}`;
+      div.innerHTML = `<strong>${sender === 'user' ? 'You' : 'Bot'}:</strong> ${message}`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function getCSRFToken() {
+      return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+  </script>
+
+</body>
+</html>
