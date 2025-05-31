@@ -1,0 +1,88 @@
+/* Full page terminal-style background and centering */
+body {
+  font-family: 'Courier New', monospace;
+  background-color: #1e1e1e;
+  color: #ffffff;
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Container for both chat box and form */
+#chat-container {
+  width: 100%;
+  max-width: 1050px;
+  display: flex;
+  flex-direction: column;
+  
+}
+
+/* Terminal-style message box */
+#chat-box {
+  background-color: #000000;
+  border: 1px solid #555;
+  padding: 15px;
+  border-radius: 5px;
+  height: 500px;
+  overflow-y: auto;
+  box-shadow: 0 0 10px #000;
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+/* Message formatting */
+.msg {
+  margin: 0px 0;
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+
+/* User message style */
+.user {
+  color: #00ffff; /* cyan */
+  text-align: left;
+}
+
+/* Bot message style */
+.bot {
+  color: #00ff00; /* green */
+  text-align: left;
+}
+
+/* Input form styles */
+#chat-form {
+  margin-top: 10px;
+  display: flex;
+}
+
+/* Text input box */
+#user-input {
+  flex: 1;
+  background-color: #000;
+  color: #fff;
+  border: 1px solid #555;
+  padding: 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  outline: none;
+}
+
+/* Submit button */
+button {
+  background-color: #333;
+  color: #0f0;
+  border: 1px solid #555;
+  padding: 10px 20px;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #555;
+}

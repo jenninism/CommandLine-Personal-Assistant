@@ -1,55 +1,40 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>CLPA Chatbot</title>
-  <style>
-    body {
-      font-family: Arial;
-      background-color: #f4f4f4;
-      margin: 0; padding: 0;
-    }
-    #chat-box {
-      width: 90%;
-      max-width: 600px;
-      margin: 20px auto;
-      background: white;
-      padding: 10px;
-      border-radius: 10px;
-      height: 400px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-    }
-    .msg { margin: 10px 0; }
-    .user { color: blue; }
-    .bot { color: green; }
-    #chat-form {
-      width: 90%;
-      max-width: 600px;
-      margin: 0 auto 20px auto;
-      display: flex;
-    }
-    #user-input {
-      flex: 1;
-      padding: 10px;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
+  <link rel="stylesheet" href="{% static 'chatbot.css' %}">
 </head>
+
 <body>
 
-  <div id="chat-box"></div>
+  <div id="chat-container">
+    <div id="chat-box">
+      <div class="msg bot">
+       <br> <strong>Welcome to Command-Line Personal Assistant!</strong> 
+  
+  This personal assistant can:
 
-  <form id="chat-form">
-    {% csrf_token %}
-    <input type="text" id="user-input" placeholder="Ask something..." autocomplete="off" required />
-    <button type="submit">Send</button>
-  </form>
+  • Answer common questions and provide helpful responses  
+  • Display the current time and date  
+  • Open websites or links directly in your browser  
+  • Perform simple commands like 'clear', 'exit', and more  
+  • Guide you through available features using the 'help' command  
+  • Provide quick access to information, tools, and resources  
+
+  Type 'help' to view all available commands.
+
+  CLPA is ready to assist you — just type a command below to begin!
+      </div>
+    </div>
+
+    <form id="chat-form">
+      {% csrf_token %}
+      <input type="text" id="user-input" placeholder="Ask something..." autocomplete="off" required />
+      <button type="submit">Send</button>
+    </form>
+  </div>
 
   <script>
     const chatBox = document.getElementById('chat-box');

@@ -17,7 +17,8 @@ def chatbot_response(request):
             "what can you do": "I can answer FAQ questions and open websites.",
             "who are you": "I am your Command Line Personal Assistant.",
             "bye": "Goodbye!",
-            "how are you": "I'm just code, but thanks for asking!"
+            "how are you": "I'm just code, but thanks for asking!",
+            "yow": "Hi there!"
         }
 
         url = None
