@@ -1,0 +1,101 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CLPA Chatbot</title>
+  <link rel="stylesheet" href="{% static 'chatbot.css' %}">
+</head>
+
+<body>
+
+  <div id="chat-container">
+    <div id="chat-box">
+      <!-- Initial welcome message -->
+      <div class="msg bot" id="welcome-message">
+       <br> <strong>Welcome to Command-Line Personal Assistant!</strong> 
+  
+  This personal assistant can:
+
+  • Answer common questions and provide helpful responses  
+  • Display the current time and date  
+  • Open websites or links directly in your browser  
+  • Perform simple commands like 'clear', 'exit', and more  
+  • Guide you through available features using the 'help' command  
+  • Provide quick access to information, tools, and resources  
+
+  Type 'help' to view all available commands.
+
+  CLPA is ready to assist you — just type a command below to begin!
+      </div>
+    </div>
+
+    <form id="chat-form">
+      {% csrf_token %}
+      <input type="text" id="user-input" placeholder="Ask something..." autocomplete="off" required />
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById('chat-box');
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
+
+    // Save the initial welcome message
+    const welcomeMessageHTML = document.getElementById('welcome-message').outerHTML;
+
+    chatForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      appendMessage(message, 'user');
+      userInput.value = '';
+
+      fetch('/chat/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: `message=${encodeURIComponent(message)}`
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.error){
+          appendMessage("Error: " + data.error, 'bot');
+          return;
+        }
+
+        if(data.response === "[CLEAR_SCREEN]") {
+          // Clear all chat messages
+          chatBox.innerHTML = '';
+          // Restore the initial welcome message
+          chatBox.innerHTML = welcomeMessageHTML;
+        } else {
+          appendMessage(data.response, 'bot');
+        }
+
+        if(data.url){
+          window.open(data.url, '_blank');
+        }
+      })
+      .catch(() => appendMessage("Error connecting to server.", 'bot'));
+    });
+
+    function appendMessage(message, sender) {
+      const div = document.createElement('div');
+      div.className = `msg ${sender}`;
+      div.innerHTML = `<strong>${sender === 'user' ? 'You' : 'Bot'}:</strong> ${message}`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function getCSRFToken() {
+      return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+  </script>
+
+</body>
+</html>
