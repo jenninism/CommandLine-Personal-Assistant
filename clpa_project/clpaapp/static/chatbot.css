@@ -43,13 +43,13 @@ body {
 
 /* User message style */
 .user {
-  color: #00ffff; /* cyan */
+  color: #ffffff; /* cyan */
   text-align: left;
 }
 
 /* Bot message style */
 .bot {
-  color: #00ff00; /* green */
+  color: #a16ae8; /* green */
   text-align: left;
 }
 
@@ -74,7 +74,7 @@ body {
 /* Submit button */
 button {
   background-color: #333;
-  color: #0f0;
+  color: #ffffff;
   border: 1px solid #555;
   padding: 10px 20px;
   font-family: 'Courier New', monospace;
