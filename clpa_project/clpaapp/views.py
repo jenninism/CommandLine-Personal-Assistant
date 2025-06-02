@@ -1,36 +1,116 @@
+import wikipedia
+import string
+import datetime
+import requests
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
+# Temporary store for tracking pending weather location requests
+weather_pending_sessions = {}
+
+# Replace this with your OpenWeatherMap API key
+WEATHER_API_KEY = 'your_openweathermap_api_key'
+
 def chat_page(request):
-    # Render the chat HTML page
     return render(request, 'clpaapp/chat.html')
 
-@csrf_exempt  # For simplicity, disable CSRF protection here (not for production)
+def get_weather(location):
+    url = 'http://api.openweathermap.org/data/2.5/weather'
+    params = {'q': location, 'appid': WEATHER_API_KEY, 'units': 'metric'}
+    
+    try:
+        res = requests.get(url, params=params)
+        data = res.json()
+
+        if data.get('cod') != 200:
+            return f"Sorry, I couldn't find weather info for '{location}'."
+
+        weather = data['weather'][0]['description']
+        temp = data['main']['temp']
+        city = data['name']
+        return f"The weather in {city} is {weather} with a temperature of {temp}°C."
+
+    except Exception as e:
+        return "Sorry, I'm having trouble retrieving the weather info right now."
+
+@csrf_exempt
 def chatbot_response(request):
     if request.method == 'POST':
         message = request.POST.get('message', '').lower()
+        message = message.translate(str.maketrans('', '', string.punctuation)).strip()
+        session_id = request.session.session_key or "default"
+
+        # Check if user is replying with a location for weather
+        if weather_pending_sessions.get(session_id):
+            weather_pending_sessions[session_id] = False
+            weather_info = get_weather(message)
+            return JsonResponse({'response': weather_info})
 
         replies = {
             "hi": "Hello!",
             "hello": "Hi there!",
-            "what can you do": "I can answer FAQ questions and open websites.",
-            "who are you": "I am your Command Line Personal Assistant.",
-            "bye": "Goodbye!",
             "how are you": "I'm just code, but thanks for asking!",
-            "yow": "Hi there!"
+            "what can you do": "I can answer questions, give daily advice, and open websites.",
+            "who are you": "I am your Command Line Personal Assistant.",
+            "what is your name": "You can call me CLPA!",
+            "bye": "Goodbye!",
+            "thank you": "You're welcome!",
+            "what time is it": "I'm not wearing a watch, but your taskbar might help.",
+            "what is programming language": "Programming languages are tools for writing instructions to computers.",
+            "what is pip": "Pip is a package manager for Python packages.",
+            "what is python": "Python is a popular programming language that's beginner-friendly.",
+            "what is django": "Django is a high-level Python web framework for building websites.",
+            "do you love me": "01011001 01000101 01010011 ❤️",
+            "help": None  # special case
+        }
+
+        websites = {
+            "open google": "https://www.google.com",
+            "open youtube": "https://www.youtube.com",
+            "open facebook": "https://www.facebook.com",
+            "open twitter": "https://www.twitter.com",
+            "open gmail": "https://mail.google.com",
+            "open github": "https://github.com",
         }
 
         url = None
-        response = replies.get(message, "Sorry, I don't understand.")
+        response = None
 
-        if message == "open google":
-            url = "https://www.google.com"
-            response = "Opening Google..."
-        elif message == "open youtube":
-            url = "https://www.youtube.com"
-            response = "Opening YouTube..."
+        # Command handling
+        if message == "clear":
+            response = "[CLEAR_SCREEN]"
+        elif message == "exit":
+            response = "Goodbye! Closing the session..."
+        elif message == "time":
+            now = datetime.datetime.now()
+            response = "Current time is " + now.strftime("%H:%M:%S")
+        elif message == "date":
+            today = datetime.date.today()
+            response = "Today's date is " + today.strftime("%B %d, %Y")
+        elif message == "help":
+            response = "You can ask me:\n- " + "\n- ".join(
+                sorted(list(replies.keys()) + list(websites.keys()) + ["clear", "exit", "time", "date"])
+            )
+        elif message in websites:
+            url = websites[message]
+            response = f"Opening {message.split()[-1].capitalize()}..."
+        elif "weather" in message:
+            weather_pending_sessions[session_id] = True
+            response = "Sure! For which location would you like the weather?"
+        elif any(message.startswith(q) for q in ["who is", "what is", "where is", "who was", "what are", "who are"]):
+            try:
+                summary = wikipedia.summary(message, sentences=2)
+                response = summary
+            except wikipedia.DisambiguationError as e:
+                response = f"That’s too broad. Did you mean: {', '.join(e.options[:5])}?"
+            except wikipedia.PageError:
+                response = "Sorry, I couldn't find anything about that."
+            except Exception:
+                response = "There was a problem fetching the info."
+        else:
+            response = replies.get(message, "Sorry, I don't understand that yet.")
 
         return JsonResponse({'response': response, 'url': url})
-    else:
-        return JsonResponse({'error': 'Invalid method'}, status=400)
+
+    return JsonResponse({'error': 'Invalid method'}, status=400)

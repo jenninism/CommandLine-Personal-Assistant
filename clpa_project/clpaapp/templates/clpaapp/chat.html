@@ -11,7 +11,8 @@
 
   <div id="chat-container">
     <div id="chat-box">
-      <div class="msg bot">
+      <!-- Initial welcome message -->
+      <div class="msg bot" id="welcome-message">
        <br> <strong>Welcome to Command-Line Personal Assistant!</strong> 
   
   This personal assistant can:
@@ -41,6 +42,9 @@
     const chatForm = document.getElementById('chat-form');
     const userInput = document.getElementById('user-input');
 
+    // Save the initial welcome message
+    const welcomeMessageHTML = document.getElementById('welcome-message').outerHTML;
+
     chatForm.addEventListener('submit', function(event) {
       event.preventDefault();
       const message = userInput.value.trim();
@@ -63,7 +67,15 @@
           appendMessage("Error: " + data.error, 'bot');
           return;
         }
-        appendMessage(data.response, 'bot');
+
+        if(data.response === "[CLEAR_SCREEN]") {
+          // Clear all chat messages
+          chatBox.innerHTML = '';
+          // Restore the initial welcome message
+          chatBox.innerHTML = welcomeMessageHTML;
+        } else {
+          appendMessage(data.response, 'bot');
+        }
 
         if(data.url){
           window.open(data.url, '_blank');
