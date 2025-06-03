@@ -79,6 +79,23 @@ def chatbot_response(request):
         if message == "new note":
             note_pending_sessions[session_id] = {"step": "title", "title": ""}
             return JsonResponse({'response': "Sure! What should the title of the note be?"})
+        
+        if raw_message.startswith("delete ") and raw_message.endswith(".txt"):
+            filename = raw_message[7:].strip()  # remove 'delete ' part
+            filename = filename.replace(" ", "_")
+            filepath = os.path.abspath(os.path.join("notes", filename))
+
+        if os.path.isfile(filepath):
+            try:
+                os.remove(filepath)
+                response = f"Note '{filename}' deleted!"
+            except Exception as e:
+                response = f"Failed to delete note '{filename}'. Error: {str(e)}"
+        else:
+            response = f"Note '{filename}' does not exist."
+
+        return JsonResponse({'response': response})
+
 
         # Static responses
         replies = {
