@@ -235,6 +235,35 @@ def chatbot_response(request):
             else:
                 response = "What would you like me to search for?"
 
+        elif message.startswith("open "):
+            app = message.replace("open", "").strip().lower()
+
+            # Map user-friendly names to actual system commands or paths
+            app_paths = {
+                "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                "notepad": "notepad",
+                "calculator": "calc",
+                "word": r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE",  # Change if different
+                "excel": r"C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE",
+                "folder": os.path.expanduser("~"),  # Opens home directory
+            }
+
+            if app in app_paths:
+                try:
+                    subprocess.Popen(app_paths[app] if "\\" in app_paths[app] else [app_paths[app]])
+                    response = f"Opening {app.capitalize()}..."
+                except Exception as e:
+                    response = f"Failed to open {app}: {e}"
+            else:
+                response = f"Sorry, I don't know how to open '{app}'."
+        elif message.startswith("open ") and message.endswith(".exe"):
+            exe_path = message.replace("open", "").strip()
+            if os.path.isfile(exe_path):
+                os.startfile(exe_path)
+                response = f"Opening application at {exe_path}"
+            else:
+                response = f"No application found at {exe_path}"
+
 
 
         else:
