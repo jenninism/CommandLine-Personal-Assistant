@@ -1,51 +1,28 @@
 import wikipedia
 import string
 import datetime
-import requests
+import re
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-# Temporary store for tracking pending weather location requests
-weather_pending_sessions = {}
-
-# Replace this with your OpenWeatherMap API key
-WEATHER_API_KEY = 'your_openweathermap_api_key'
-
 def chat_page(request):
     return render(request, 'clpaapp/chat.html')
-
-def get_weather(location):
-    url = 'http://api.openweathermap.org/data/2.5/weather'
-    params = {'q': location, 'appid': WEATHER_API_KEY, 'units': 'metric'}
-    
-    try:
-        res = requests.get(url, params=params)
-        data = res.json()
-
-        if data.get('cod') != 200:
-            return f"Sorry, I couldn't find weather info for '{location}'."
-
-        weather = data['weather'][0]['description']
-        temp = data['main']['temp']
-        city = data['name']
-        return f"The weather in {city} is {weather} with a temperature of {temp}°C."
-
-    except Exception as e:
-        return "Sorry, I'm having trouble retrieving the weather info right now."
 
 @csrf_exempt
 def chatbot_response(request):
     if request.method == 'POST':
         message = request.POST.get('message', '').lower()
         message = message.translate(str.maketrans('', '', string.punctuation)).strip()
-        session_id = request.session.session_key or "default"
 
-        # Check if user is replying with a location for weather
-        if weather_pending_sessions.get(session_id):
-            weather_pending_sessions[session_id] = False
-            weather_info = get_weather(message)
-            return JsonResponse({'response': weather_info})
+        timer_match = re.search(r"set timer for (\d+)\s*(seconds?|minutes?|hours?)", message)
+        if timer_match:
+            amount = int(timer_match.group(1))
+            unit = timer_match.group(2)
+            return JsonResponse({'response': f"⏱ Timer set for {amount} {unit}!"})
+
+        if any(phrase in message for phrase in ["timer", "i need timer", "please timer"]):
+            return JsonResponse({'response': "How long should I set the timer for? (e.g., 'set timer for 5 minutes')"})
 
         replies = {
             "hi": "Hello!",
@@ -77,7 +54,6 @@ def chatbot_response(request):
         url = None
         response = None
 
-        # Command handling
         if message == "clear":
             response = "[CLEAR_SCREEN]"
         elif message == "exit":
@@ -95,9 +71,6 @@ def chatbot_response(request):
         elif message in websites:
             url = websites[message]
             response = f"Opening {message.split()[-1].capitalize()}..."
-        elif "weather" in message:
-            weather_pending_sessions[session_id] = True
-            response = "Sure! For which location would you like the weather?"
         elif any(message.startswith(q) for q in ["who is", "what is", "where is", "who was", "what are", "who are"]):
             try:
                 summary = wikipedia.summary(message, sentences=2)
