@@ -7,14 +7,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import os
 
-note_pending_sessions = {}  #NOTES
-
-# Temporary store for tracking pending weather location requests
-weather_pending_sessions = {}
-
-# Replace this with your OpenWeatherMap API key
-WEATHER_API_KEY = 'your_openweathermap_api_key'
-
+note_pending_sessions = {}  # NOTES
 
 def chat_page(request):
     return render(request, 'clpaapp/chat.html')
@@ -24,7 +17,9 @@ def chatbot_response(request):
     if request.method == 'POST':
         message = request.POST.get('message', '').lower()
         message = message.translate(str.maketrans('', '', string.punctuation)).strip()
+        session_id = request.session.session_key or "default"
 
+        # Timer command
         timer_match = re.search(r"set timer for (\d+)\s*(seconds?|minutes?|hours?)", message)
         if timer_match:
             amount = int(timer_match.group(1))
@@ -33,46 +28,40 @@ def chatbot_response(request):
 
         if any(phrase in message for phrase in ["timer", "i need timer", "please timer"]):
             return JsonResponse({'response': "How long should I set the timer for? (e.g., 'set timer for 5 minutes')"})
-        session_id = request.session.session_key or "default"
 
-        # Check if user is replying with a location for weather
-        if weather_pending_sessions.get(session_id):
-            weather_pending_sessions[session_id] = False
-            weather_info = get_weather(message)
-            return JsonResponse({'response': weather_info})
-        
+        # Note taking steps
         if session_id in note_pending_sessions:
-                note_state = note_pending_sessions[session_id]
-                if note_state["step"] == "title":
-                    note_state["title"] = message
-                    note_state["step"] = "content"
-                    return JsonResponse({'response': "Great! What should the note say?"})
-                elif note_state["step"] == "content":
-                    title = note_state["title"]
-                    content = message
+            note_state = note_pending_sessions[session_id]
+            if note_state["step"] == "title":
+                note_state["title"] = message
+                note_state["step"] = "content"
+                return JsonResponse({'response': "Great! What should the note say?"})
+            elif note_state["step"] == "content":
+                title = note_state["title"]
+                content = message
 
-                    filename = f"{title.replace(' ', '_')}.txt"
-                    filepath = os.path.join("notes", filename)
-                    os.makedirs("notes", exist_ok=True)
+                filename = f"{title.replace(' ', '_')}.txt"
+                filepath = os.path.join("notes", filename)
+                os.makedirs("notes", exist_ok=True)
 
-                    with open(filepath, "w", encoding="utf-8") as f:
-                        f.write(content)
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(content)
 
-                    del note_pending_sessions[session_id]
+                del note_pending_sessions[session_id]
 
-                    try:
-                        os.system(f"notepad.exe {filepath}")  # For Windows; change if needed
-                    except Exception:
-                        pass
+                try:
+                    os.system(f"notepad.exe {filepath}")  # For Windows
+                except Exception:
+                    pass
 
-                    return JsonResponse({'response': f"Note '{title}' saved and opened in Notepad!"})
+                return JsonResponse({'response': f"Note '{title}' saved and opened in Notepad!"})
 
-            # Trigger note-taking on 'new note' command
-        message_lower = message.lower().translate(str.maketrans('', '', string.punctuation)).strip()
-        if message_lower == "new note":
+        # Start new note
+        if message == "new note":
             note_pending_sessions[session_id] = {"step": "title", "title": ""}
             return JsonResponse({'response': "Sure! What should the title of the note be?"})
 
+        # Static responses
         replies = {
             "hi": "Hello!",
             "hello": "Hi there!",
@@ -91,6 +80,7 @@ def chatbot_response(request):
             "help": None  # special case
         }
 
+        # Website shortcuts
         websites = {
             "open google": "https://www.google.com",
             "open youtube": "https://www.youtube.com",
@@ -103,6 +93,7 @@ def chatbot_response(request):
         url = None
         response = None
 
+        # Command handling
         if message == "clear":
             response = "[CLEAR_SCREEN]"
         elif message == "exit":
@@ -130,11 +121,6 @@ def chatbot_response(request):
                 response = "Sorry, I couldn't find anything about that."
             except Exception:
                 response = "There was a problem fetching the info."
-      
-
-        
-
-        
         else:
             response = replies.get(message, "Sorry, I don't understand that yet.")
 
