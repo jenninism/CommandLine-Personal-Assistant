@@ -15,14 +15,12 @@ note_pending_sessions = {}  # NOTES
 def chat_page(request):
     return render(request, 'clpaapp/chat.html')
 
-@csrf_exempt
 def chatbot_response(request):
     if request.method == 'POST':
         message = request.POST.get('message', '').lower()
         message = message.translate(str.maketrans('', '', string.punctuation)).strip()
         session_id = request.session.session_key or "default"
-
-        # Timer command
+    
         timer_match = re.search(r"set timer for (\d+)\s*(seconds?|minutes?|hours?)", message)
         if timer_match:
             amount = int(timer_match.group(1))
@@ -31,49 +29,53 @@ def chatbot_response(request):
 
         if any(phrase in message for phrase in ["timer", "i need timer", "please timer"]):
             return JsonResponse({'response': "How long should I set the timer for? (e.g., 'set timer for 5 minutes')"})
-
-        # Note taking steps
+        
         if session_id in note_pending_sessions:
-            note_state = note_pending_sessions[session_id]
-            if note_state["step"] == "title":
-                note_state["title"] = message
-                note_state["step"] = "content"
-                return JsonResponse({'response': "Great! What should the note say?"})
-            elif note_state["step"] == "content":
-                title = note_state["title"]
-                content = message
-            note_state = note_pending_sessions[session_id]
-            if note_state["step"] == "title":
-                note_state["title"] = message
-                note_state["step"] = "content"
-                return JsonResponse({'response': "Great! What should the note say?"})
-            elif note_state["step"] == "content":
-                title = note_state["title"]
-                content = message
+                    note_state = note_pending_sessions[session_id]
+                    if note_state["step"] == "title":
+                        note_state["title"] = message
+                        note_state["step"] = "content"
+                        return JsonResponse({'response': "Great! What should the note say?"})
+                    elif note_state["step"] == "content":
+                        title = note_state["title"]
+                        content = message
 
-                filename = f"{title.replace(' ', '_')}.txt"
-                filepath = os.path.join("notes", filename)
-                os.makedirs("notes", exist_ok=True)
-                filename = f"{title.replace(' ', '_')}.txt"
-                filepath = os.path.join("notes", filename)
-                os.makedirs("notes", exist_ok=True)
+                        filename = f"{title.replace(' ', '_')}.txt"
+                        filepath = os.path.join("notes", filename)
+                        os.makedirs("notes", exist_ok=True)
 
-                with open(filepath, "w", encoding="utf-8") as f:
-                    f.write(content)
-                with open(filepath, "w", encoding="utf-8") as f:
-                    f.write(content)
+                        with open(filepath, "w", encoding="utf-8") as f:
+                            f.write(content)
 
-                del note_pending_sessions[session_id]
-                del note_pending_sessions[session_id]
+                        del note_pending_sessions[session_id]
 
+                        try:
+                            os.system(f"notepad.exe {filepath}")  # Windows only
+                        except Exception:
+                            pass
+
+                        return JsonResponse({'response': f"Note '{title}' saved and opened in Notepad!"})
+                        
+        raw_message = request.POST.get('message', '').lower().strip()
+        message = raw_message.translate(str.maketrans('', '', string.punctuation)).strip()
+
+        if raw_message.startswith("open ") and raw_message.endswith(".txt"):
+            filename = raw_message[5:].strip()
+            filename = filename.replace(" ", "_")
+            filepath = os.path.abspath(os.path.join("notes", filename))
+
+            if os.path.isfile(filepath):
                 try:
-                    os.system(f"notepad.exe {filepath}")  # For Windows
-                except Exception:
-                    pass
+                    subprocess.Popen(['notepad.exe', filepath])
+                    response = f"Opening note '{filename}' in Notepad."
+                except Exception as e:
+                    response = f"Note '{filename}' found, but failed to open it. Error: {str(e)}"
+            else:
+                response = f"Sorry, note '{filename}' does not exist."
 
-                return JsonResponse({'response': f"Note '{title}' saved and opened in Notepad!"})
+            return JsonResponse({'response': response})
 
-        # Start new note
+            # 4. Start a new note
         if message == "new note":
             note_pending_sessions[session_id] = {"step": "title", "title": ""}
             return JsonResponse({'response': "Sure! What should the title of the note be?"})
