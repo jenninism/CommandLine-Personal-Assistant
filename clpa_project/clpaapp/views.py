@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 import os
 import subprocess
 import requests
+import webbrowser
 
 folder_pending_sessions = {}
 note_pending_sessions = {}  # NOTES
@@ -223,6 +224,17 @@ def chatbot_response(request):
                     response = f"Found the folder, but I couldn't open it."
             else:
                 response = f"Sorry, the folder '{folder_name}' does not exist."
+        elif message.startswith("search "):
+            query = message.replace("search", "").strip()
+            if query:
+                url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+                try:
+                    response = f"Searching for '{query}' on Google..."
+                except Exception:
+                    response = f"Something went wrong while trying to search."
+            else:
+                response = "What would you like me to search for?"
+
 
 
         else:
