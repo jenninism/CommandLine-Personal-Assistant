@@ -6,6 +6,9 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import os
+import subprocess
+
+
 
 note_pending_sessions = {}  # NOTES
 
@@ -39,14 +42,28 @@ def chatbot_response(request):
             elif note_state["step"] == "content":
                 title = note_state["title"]
                 content = message
+            note_state = note_pending_sessions[session_id]
+            if note_state["step"] == "title":
+                note_state["title"] = message
+                note_state["step"] = "content"
+                return JsonResponse({'response': "Great! What should the note say?"})
+            elif note_state["step"] == "content":
+                title = note_state["title"]
+                content = message
 
+                filename = f"{title.replace(' ', '_')}.txt"
+                filepath = os.path.join("notes", filename)
+                os.makedirs("notes", exist_ok=True)
                 filename = f"{title.replace(' ', '_')}.txt"
                 filepath = os.path.join("notes", filename)
                 os.makedirs("notes", exist_ok=True)
 
                 with open(filepath, "w", encoding="utf-8") as f:
                     f.write(content)
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(content)
 
+                del note_pending_sessions[session_id]
                 del note_pending_sessions[session_id]
 
                 try:
