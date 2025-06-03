@@ -7,10 +7,38 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import os
 import subprocess
+import requests
 
 
 
 note_pending_sessions = {}  # NOTES
+
+def get_definition(word):
+    try:
+        url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
+        response = requests.get(url)
+        data = response.json()
+
+        if isinstance(data, dict) and data.get("title") == "No Definitions Found":
+            return f"Sorry, I couldn't find a definition for '{word}'."
+
+        meanings = data[0]['meanings']
+        definitions = []
+
+        for meaning in meanings:
+            part_of_speech = meaning.get('partOfSpeech', '')
+            for definition in meaning['definitions']:
+                def_text = definition['definition']
+                example = definition.get('example', '')
+                line = f"{part_of_speech}: {def_text}"
+                if example:
+                    line += f" (Example: {example})"
+                definitions.append(line)
+
+        return "\n".join(definitions[:3])  # limit to 3 definitions for brevity
+    except Exception:
+        return "Sorry, I couldn't retrieve the definition right now."
+
 
 def chat_page(request):
     return render(request, 'clpaapp/chat.html')
@@ -157,6 +185,12 @@ def chatbot_response(request):
                 response = "Sorry, I couldn't find anything about that."
             except Exception:
                 response = "There was a problem fetching the info."
+        elif message.startswith("define "):
+            word = message.replace("define ", "").strip()
+            if word:
+                response = get_definition(word)
+            else:
+                response = "Please tell me the word you want me to define."
         else:
             response = replies.get(message, "Sorry, I don't understand that yet.")
 
