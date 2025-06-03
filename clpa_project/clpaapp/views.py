@@ -9,8 +9,7 @@ import os
 import subprocess
 import requests
 
-
-
+folder_pending_sessions = {}
 note_pending_sessions = {}  # NOTES
 
 def get_definition(word):
@@ -83,6 +82,23 @@ def chatbot_response(request):
                             pass
 
                         return JsonResponse({'response': f"Note '{title}' saved and opened in Notepad!"})
+        if session_id in folder_pending_sessions:
+            folder_name = message.strip()
+            FOLDER_DIR = os.path.join(os.path.expanduser("~"), "CLPA_Folders")
+            os.makedirs(FOLDER_DIR, exist_ok=True)
+
+            folder_path = os.path.join(FOLDER_DIR, folder_name)
+            try:
+                os.makedirs(folder_path)
+                os.startfile(folder_path)
+                response = f"Folder '{folder_name}' has been created in {FOLDER_DIR}."
+            except FileExistsError:
+                response = f"A folder named '{folder_name}' already exists."
+            except Exception as e:
+                response = f"Failed to create folder: {e}"
+
+            del folder_pending_sessions[session_id]
+            return JsonResponse({'response': response})
                         
         raw_message = request.POST.get('message', '').lower().strip()
         message = raw_message.translate(str.maketrans('', '', string.punctuation)).strip()
@@ -191,6 +207,24 @@ def chatbot_response(request):
                 response = get_definition(word)
             else:
                 response = "Please tell me the word you want me to define."
+        elif message in ["create folder", "new folder", "make folder"]:
+            folder_pending_sessions[session_id] = True
+            response = "What should the folder name be?"
+        elif message.startswith("open folder "):
+            folder_name = message.replace("open folder", "").strip()
+            FOLDER_DIR = os.path.join(os.path.expanduser("~"), "CLPA_Folders")
+            folder_path = os.path.join(FOLDER_DIR, folder_name)
+
+            if os.path.isdir(folder_path):
+                try:
+                    os.startfile(folder_path)
+                    response = f"Opening folder '{folder_name}'..."
+                except Exception:
+                    response = f"Found the folder, but I couldn't open it."
+            else:
+                response = f"Sorry, the folder '{folder_name}' does not exist."
+
+
         else:
             response = replies.get(message, "Sorry, I don't understand that yet.")
 
