@@ -9,6 +9,7 @@
 
 <body>
 
+  
   <div id="chat-container">
     <div id="chat-box">
       <!-- Initial welcome message -->
@@ -81,6 +82,8 @@ Please note that your spelling is correct before entering the message.
           window.open(data.url, '_blank');
         }
       })
+
+      
       .catch(() => appendMessage("Error connecting to server.", 'bot'));
     });
 

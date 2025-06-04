@@ -91,12 +91,26 @@ def chatbot_response(request):
         message = message.translate(str.maketrans('', '', string.punctuation)).strip()
         session_id = request.session.session_key or "default"
 
-        # Start adding a reminder
-        if message == "add reminder":
-            reminder_pending_sessions[session_id] = {"mode": "add"}
-            return JsonResponse({'response': "What should I remind you about?"})
+#DEFINE
+        if message.startswith("define "):
+            word = message.replace("define ", "").strip()
+            if word:
+                response_text = get_definition(word)
+            else:
+                response_text = "Please tell me the word you want me to define."
+            return JsonResponse({'response': response_text})
+#TIME
+        if message == "time":
+            now = datetime.datetime.now()
+            response_text = "Current time is " + now.strftime("%H:%M:%S")
+            return JsonResponse({'response': response_text})
+#DATE
+        elif message == "date":
+            today = datetime.date.today()
+            response_text = "Today's date is " + today.strftime("%B %d, %Y")
+            return JsonResponse({'response': response_text})
 
-        # Show all reminders
+#REMINDERS
         if message == "reminders":
             reminders = load_reminders(session_id)
             if reminders:
@@ -105,7 +119,7 @@ def chatbot_response(request):
                 response_text = "You have no reminders."
             return JsonResponse({'response': response_text})
 
-        # Start editing reminders
+#EDIT REMINDERS
         if message == "edit reminders":
             reminders = load_reminders(session_id)
             if not reminders:
@@ -254,8 +268,6 @@ def chatbot_response(request):
                 response = f"Note '{filename}' does not exist."
 
             return JsonResponse({'response': response})
-        
-    
     
         if message.startswith("calculate "):
             expression = raw_message[len("calculate "):].strip()
@@ -281,7 +293,6 @@ def chatbot_response(request):
             save_reminders(session_id, reminders)
             del reminder_pending_sessions[session_id]
             return JsonResponse({'response': f"Got it! Reminder added: '{message}'"})
-
      
 
         # Static responses
@@ -294,13 +305,12 @@ def chatbot_response(request):
             "what is your name": "You can call me CLPA!",
             "bye": "Goodbye!",
             "thank you": "You're welcome!",
-            "what time is it": "I'm not wearing a watch, but your taskbar might help.",
             "what is programming language": "Programming languages are tools for writing instructions to computers.",
             "what is pip": "Pip is a package manager for Python packages.",
             "what is python": "Python is a popular programming language that's beginner-friendly.",
             "what is django": "Django is a high-level Python web framework for building websites.",
             "do you love me": "01011001 01000101 01010011 ❤️",
-            "help": "List of available commands:\n-new note\n-open note\n-delete note\n-time\n-date\n-timer\n-reminders\n-add reminder\n-create folder\n-open folder 'file name'\n-define (something)\n-open (website)\n-open (application)\n-clear\n-exit\n",
+            "help": "List of available commands:\n-new note\n-open note\n-delete note\n-time\n-date\n-timer\n-reminders\n-add reminder\n-edit reminders\n-delete reminders\n-create folder\n-open folder 'file name'\n-define (something)\n-open (website)\n-open (application)\n-clear\n-exit\n",
         }
 
         # Website shortcuts
@@ -316,19 +326,8 @@ def chatbot_response(request):
         url = None
         response = None
 
-        # Command handling
-        if message == "clear":
-            response = "[CLEAR_SCREEN]"
-        elif message == "exit":
-            response = "Goodbye! Closing the session..."
-        elif message == "time":
-            now = datetime.datetime.now()
-            response = "Current time is " + now.strftime("%H:%M:%S")
-        elif message == "date":
-            today = datetime.date.today()
-            response = "Today's date is " + today.strftime("%B %d, %Y")
         
-        elif message in websites:
+        if message in websites:
             url = websites[message]
             response = f"Opening {message.split()[-1].capitalize()}..."
         elif any(message.startswith(q) for q in ["who is", "what is", "where is", "who was", "what are", "who are"]):
@@ -342,13 +341,7 @@ def chatbot_response(request):
             except Exception:
                 response = "There was a problem fetching the info."
 
-        elif message.startswith("define "):
-            word = message.replace("define ", "").strip()
-            if word:
-                response = get_definition(word)
-            else:
-                response = "Please tell me the word you want me to define."
-                
+        
         if session_id in folder_pending_sessions:
             stage = folder_pending_sessions[session_id]["awaiting"]
 
