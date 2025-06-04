@@ -12,6 +12,34 @@ import webbrowser
 
 folder_pending_sessions = {}
 note_pending_sessions = {}  # NOTES
+folder_search_sessions = {}
+
+
+def find_folders(root_path, folder_name):
+    matches = []
+    for dirpath, dirnames, _ in os.walk(root_path):
+        if folder_name in dirnames:
+            full_path = os.path.join(dirpath, folder_name)
+            matches.append(full_path)
+    return matches
+
+def open_folders_by_name(folder_name):
+    drives = ['%s:\\' % d for d in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' if os.path.exists('%s:\\' % d)]
+    found_folders = []
+    for drive in drives:
+        found_folders.extend(find_folders(drive, folder_name))
+
+    if not found_folders:
+        return f"❌ No folders named '{folder_name}' found."
+
+    for folder_path in found_folders:
+        try:
+            os.startfile(folder_path)
+        except Exception:
+            pass
+
+    return f"📂 Opened {len(found_folders)} folder(s) named '{folder_name}'."
+
 
 def get_definition(word):
     try:
@@ -35,7 +63,7 @@ def get_definition(word):
                     line += f" (Example: {example})"
                 definitions.append(line)
 
-        return "\n".join(definitions[:3])  # limit to 3 definitions for brevity
+        return "\n".join(definitions[:3])  
     except Exception:
         return "Sorry, I couldn't retrieve the definition right now."
 
@@ -83,24 +111,7 @@ def chatbot_response(request):
                             pass
 
                         return JsonResponse({'response': f"Note '{title}' saved and opened in Notepad!"})
-        if session_id in folder_pending_sessions:
-            folder_name = message.strip()
-            FOLDER_DIR = os.path.join(os.path.expanduser("~"), "CLPA_Folders")
-            os.makedirs(FOLDER_DIR, exist_ok=True)
-
-            folder_path = os.path.join(FOLDER_DIR, folder_name)
-            try:
-                os.makedirs(folder_path)
-                os.startfile(folder_path)
-                response = f"Folder '{folder_name}' has been created in {FOLDER_DIR}."
-            except FileExistsError:
-                response = f"A folder named '{folder_name}' already exists."
-            except Exception as e:
-                response = f"Failed to create folder: {e}"
-
-            del folder_pending_sessions[session_id]
-            return JsonResponse({'response': response})
-                        
+                    
         raw_message = request.POST.get('message', '').lower().strip()
         message = raw_message.translate(str.maketrans('', '', string.punctuation)).strip()
 
@@ -158,7 +169,7 @@ def chatbot_response(request):
             "what is python": "Python is a popular programming language that's beginner-friendly.",
             "what is django": "Django is a high-level Python web framework for building websites.",
             "do you love me": "01011001 01000101 01010011 ❤️",
-            "help": None  # special case
+            "help": "List of available commands:\n-new note\n-open note\n-delete note\n-time\n-date\n-timer\n-create folder\n-open folder 'file name'\n-define (something)\n-open (website)\n-open (application)\n-clear\n-exit\n",
         }
 
         # Website shortcuts
@@ -185,10 +196,7 @@ def chatbot_response(request):
         elif message == "date":
             today = datetime.date.today()
             response = "Today's date is " + today.strftime("%B %d, %Y")
-        elif message == "help":
-            response = "You can ask me:\n- " + "\n- ".join(
-                sorted(list(replies.keys()) + list(websites.keys()) + ["clear", "exit", "time", "date"])
-            )
+        
         elif message in websites:
             url = websites[message]
             response = f"Opening {message.split()[-1].capitalize()}..."
@@ -202,43 +210,109 @@ def chatbot_response(request):
                 response = "Sorry, I couldn't find anything about that."
             except Exception:
                 response = "There was a problem fetching the info."
+
         elif message.startswith("define "):
             word = message.replace("define ", "").strip()
             if word:
                 response = get_definition(word)
             else:
                 response = "Please tell me the word you want me to define."
-        elif message in ["create folder", "new folder", "make folder"]:
-            folder_pending_sessions[session_id] = True
-            response = "What should the folder name be?"
-        elif message.startswith("open folder "):
-            folder_name = message.replace("open folder", "").strip()
-            FOLDER_DIR = os.path.join(os.path.expanduser("~"), "CLPA_Folders")
-            folder_path = os.path.join(FOLDER_DIR, folder_name)
+                
+        if session_id in folder_pending_sessions:
+            stage = folder_pending_sessions[session_id]["awaiting"]
 
-            if os.path.isdir(folder_path):
+            if stage == "location":
+                location = message.strip().lower()
+
+                # Map user-friendly names to system paths
+                if location == "desktop":
+                    base_path = os.path.join(os.path.expanduser("~"), "Desktop")
+                elif location == "documents":
+                    base_path = os.path.join(os.path.expanduser("~"), "Documents")
+                elif os.path.isabs(location):
+                    base_path = location
+                else:
+                    base_path = os.path.join(os.path.expanduser("~"), location)
+
+                folder_pending_sessions[session_id] = {
+                    "awaiting": "name",
+                    "base_path": base_path
+                }
+                return JsonResponse({'response': "Got it! What should the folder name be?"})
+
+            elif stage == "name":
+                name = message.strip()
+                base_path = folder_pending_sessions[session_id]["base_path"]
+                folder_path = os.path.join(base_path, name)
+
                 try:
-                    os.startfile(folder_path)
-                    response = f"Opening folder '{folder_name}'..."
-                except Exception:
-                    response = f"Found the folder, but I couldn't open it."
-            else:
-                response = f"Sorry, the folder '{folder_name}' does not exist."
+                    os.makedirs(folder_path, exist_ok=True)
+                    response = f"Folder created at: {folder_path}"
+                except Exception as e:
+                    response = f"Failed to create folder: {e}"
+
+                del folder_pending_sessions[session_id]
+                return JsonResponse({'response': response})
+
+        elif message in ["create folder", "new folder", "make folder"]:
+            folder_pending_sessions[session_id] = {"awaiting": "location"}
+            response = "📂 Where would you like to place the folder? (e.g. Desktop, Documents, D:\\MyProjects)"
+
+        
         elif message.startswith("search "):
             query = message.replace("search", "").strip()
             if query:
                 url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-                try:
-                    response = f"Searching for '{query}' on Google..."
-                except Exception:
-                    response = f"Something went wrong while trying to search."
+                response = f"Searching for '{query}' on Google..."
+                return JsonResponse({'response': response, 'url': url})  # ✅ return early
             else:
                 response = "What would you like me to search for?"
+                return JsonResponse({'response': response})
+            
+        if session_id in folder_search_sessions:
+            session = folder_search_sessions[session_id]
+
+            if session["step"] == "ask_location":
+                location = message.strip()
+
+                # Resolve location to full path
+                if location.lower() == "desktop":
+                    base_path = os.path.join(os.path.expanduser("~"), "Desktop")
+                elif location.lower() == "documents":
+                    base_path = os.path.join(os.path.expanduser("~"), "Documents")
+                elif os.path.isabs(location):
+                    base_path = location
+                else:
+                    base_path = os.path.join(os.path.expanduser("~"), location)
+
+                folder_name = session["folder_name"]
+                try:
+                    found_folders = find_folders(base_path, folder_name)
+                    if not found_folders:
+                        response = f"❌ No folders named '{folder_name}' found in {base_path}."
+                    else:
+                        for folder_path in found_folders:
+                            subprocess.Popen(['explorer', folder_path])
+                        response = f"📂 Opened {len(found_folders)} folder(s) named '{folder_name}' in {base_path}."
+                except Exception as e:
+                    response = f"Error searching folders: {e}"
+
+                del folder_search_sessions[session_id]
+                return JsonResponse({'response': response})
+
+
+
+        if message.startswith("open folder "):
+            folder_name = message[len("open folder "):].strip()
+            folder_search_sessions[session_id] = {"step": "ask_location", "folder_name": folder_name}
+            response = f"Where should I look for the folder named '{folder_name}'? (e.g., Desktop, Documents, D:\\MyProjects)"
+            return JsonResponse({'response': response})
+
+
 
         elif message.startswith("open "):
             app = message.replace("open", "").strip().lower()
-
-            # Map user-friendly names to actual system commands or paths
+        
             app_paths = {
                 "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
                 "notepad": "notepad",
@@ -272,3 +346,4 @@ def chatbot_response(request):
         return JsonResponse({'response': response, 'url': url})
 
     return JsonResponse({'error': 'Invalid method'}, status=400)
+
