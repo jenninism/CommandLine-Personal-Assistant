@@ -10,11 +10,24 @@ import subprocess
 import requests
 import webbrowser
 import math 
+import json
 
 folder_pending_sessions = {}
 note_pending_sessions = {}  # NOTES
 folder_search_sessions = {}
+reminder_pending_sessions = {} 
 
+def load_reminders(session_id):
+    filepath = f'reminders_{session_id}.json'
+    if os.path.exists(filepath):
+        with open(filepath, 'r') as f:
+            return json.load(f)
+    return []
+
+def save_reminders(session_id, reminders):
+    filepath = f'reminders_{session_id}.json'
+    with open(filepath, 'w') as f:
+        json.dump(reminders, f)
 
 def find_folders(root_path, folder_name):
     matches = []
@@ -77,6 +90,27 @@ def chatbot_response(request):
         message = request.POST.get('message', '').lower()
         message = message.translate(str.maketrans('', '', string.punctuation)).strip()
         session_id = request.session.session_key or "default"
+
+        if message == "add reminder":
+            reminder_pending_sessions[session_id] = True
+            return JsonResponse({'response': "What should I remind you about?"})
+
+        # If user says "reminders", display all saved reminders
+        if message == "reminders":
+            reminders = load_reminders(session_id)
+            if reminders:
+                response_text = "Here are your reminders:\n" + "\n".join(f"- {r}" for r in reminders)
+            else:
+                response_text = "You have no reminders."
+            return JsonResponse({'response': response_text})
+
+        # If user is currently in the process of adding a reminder
+        if session_id in reminder_pending_sessions:
+            reminders = load_reminders(session_id)
+            reminders.append(message)
+            save_reminders(session_id, reminders)
+            del reminder_pending_sessions[session_id]
+            return JsonResponse({'response': f"Got it! Reminder added: '{message}'"})
     
         timer_match = re.search(r"set timer for (\d+)\s*(seconds?|minutes?|hours?)", message)
         if timer_match:
@@ -152,6 +186,8 @@ def chatbot_response(request):
                 response = f"Note '{filename}' does not exist."
 
             return JsonResponse({'response': response})
+        
+    
     
         if message.startswith("calculate "):
             expression = raw_message[len("calculate "):].strip()
@@ -169,7 +205,16 @@ def chatbot_response(request):
                     response = f"Error calculating expression: {str(e)}"
 
             return JsonResponse({'response': response})
+        
+        if session_id in reminder_pending_sessions:
+            # Add the reminder text
+            reminders = load_reminders(session_id)
+            reminders.append(message)
+            save_reminders(session_id, reminders)
+            del reminder_pending_sessions[session_id]
+            return JsonResponse({'response': f"Got it! Reminder added: '{message}'"})
 
+     
 
         # Static responses
         replies = {
@@ -187,7 +232,7 @@ def chatbot_response(request):
             "what is python": "Python is a popular programming language that's beginner-friendly.",
             "what is django": "Django is a high-level Python web framework for building websites.",
             "do you love me": "01011001 01000101 01010011 ❤️",
-            "help": "List of available commands:\n-new note\n-open note\n-delete note\n-time\n-date\n-timer\n-create folder\n-open folder 'file name'\n-define (something)\n-open (website)\n-open (application)\n-clear\n-exit\n",
+            "help": "List of available commands:\n-new note\n-open note\n-delete note\n-time\n-date\n-timer\n-reminders\n-add reminder\n-create folder\n-open folder 'file name'\n-define (something)\n-open (website)\n-open (application)\n-clear\n-exit\n",
         }
 
         # Website shortcuts
@@ -367,6 +412,7 @@ def chatbot_response(request):
 
 
 
+
         else:
             response = replies.get(message, "Sorry, I don't understand that yet.")
 
@@ -374,3 +420,4 @@ def chatbot_response(request):
 
     return JsonResponse({'error': 'Invalid method'}, status=400)
 
+        
