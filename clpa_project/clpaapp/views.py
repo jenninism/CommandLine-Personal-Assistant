@@ -9,6 +9,7 @@ import os
 import subprocess
 import requests
 import webbrowser
+import math 
 
 folder_pending_sessions = {}
 note_pending_sessions = {}  # NOTES
@@ -149,6 +150,23 @@ def chatbot_response(request):
                     response = f"Failed to delete note '{filename}'. Error: {str(e)}"
             else:
                 response = f"Note '{filename}' does not exist."
+
+            return JsonResponse({'response': response})
+    
+        if message.startswith("calculate "):
+            expression = raw_message[len("calculate "):].strip()
+
+            # Allow only digits, math operators, parentheses, and spaces
+            allowed_chars = "0123456789+-*/(). "
+            if any(ch not in allowed_chars for ch in expression):
+                response = "Sorry, I can only calculate simple math expressions with numbers and +, -, *, /, ( )."
+            else:
+                try:
+                    # Evaluate safely with eval limited to math builtins only
+                    result = eval(expression, {"__builtins__": None}, {})
+                    response = f"Result: {result}"
+                except Exception as e:
+                    response = f"Error calculating expression: {str(e)}"
 
             return JsonResponse({'response': response})
 
@@ -315,12 +333,21 @@ def chatbot_response(request):
         
             app_paths = {
                 "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                "edge": r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                "spotify": r"C:\Users\%USERNAME%\AppData\Roaming\Spotify\Spotify.exe",
+                "vscode": r"C:\Users\%USERNAME%\AppData\Local\Programs\Microsoft VS Code\Code.exe",
                 "notepad": "notepad",
                 "calculator": "calc",
-                "word": r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE",  # Change if different
+                "word": r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE",
                 "excel": r"C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE",
-                "folder": os.path.expanduser("~"),  # Opens home directory
+                "powerpoint": r"C:\Program Files\Microsoft Office\root\Office16\POWERPNT.EXE",
+                "folder": os.path.expanduser("~"),
+
+                "outlook": r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE",
+                "paint": r"C:\Windows\System32\mspaint.exe",
+                "wordpad": r"C:\Program Files\Windows NT\Accessories\wordpad.exe",
             }
+            
 
             if app in app_paths:
                 try:
