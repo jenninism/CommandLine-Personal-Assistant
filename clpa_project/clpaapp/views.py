@@ -17,19 +17,19 @@ note_pending_sessions = {}  # NOTES
 folder_search_sessions = {}
 reminder_pending_sessions = {} 
 
-def load_reminders(session_id):
+def load_reminders(session_id): #Pag load reminders
     filepath = f'reminders_{session_id}.json'
     if os.path.exists(filepath):
         with open(filepath, 'r') as f:
             return json.load(f)
     return []
 
-def save_reminders(session_id, reminders):
+def save_reminders(session_id, reminders): #Pag save reminders
     filepath = f'reminders_{session_id}.json'
     with open(filepath, 'w') as f:
         json.dump(reminders, f)
 
-def find_folders(root_path, folder_name):
+def find_folders(root_path, folder_name): #Pag find folders
     matches = []
     for dirpath, dirnames, _ in os.walk(root_path):
         if folder_name in dirnames:
@@ -37,7 +37,7 @@ def find_folders(root_path, folder_name):
             matches.append(full_path)
     return matches
 
-def open_folders_by_name(folder_name):
+def open_folders_by_name(folder_name): #Pag open folders
     drives = ['%s:\\' % d for d in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' if os.path.exists('%s:\\' % d)]
     found_folders = []
     for drive in drives:
@@ -55,7 +55,7 @@ def open_folders_by_name(folder_name):
     return f"📂 Opened {len(found_folders)} folder(s) named '{folder_name}'."
 
 
-def get_definition(word):
+def get_definition(word): #kanan definitions
     try:
         url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
         response = requests.get(url)
@@ -82,7 +82,7 @@ def get_definition(word):
         return "Sorry, I couldn't retrieve the definition right now."
 
 
-def chat_page(request):
+def chat_page(request): 
     return render(request, 'clpaapp/chat.html')
 
 def chatbot_response(request):
@@ -102,7 +102,7 @@ def chatbot_response(request):
 #TIME
         if message == "time":
             now = datetime.datetime.now()
-            response_text = "Current time is " + now.strftime("%H:%M:%S")
+            response_text = "Current time is " + now.strftime("%I:%M:%S %p")
             return JsonResponse({'response': response_text})
 #DATE
         elif message == "date":
@@ -120,30 +120,42 @@ def chatbot_response(request):
             return JsonResponse({'response': response_text})
 
 #EDIT REMINDERS
-        if message == "edit reminders":
+        if message == "add reminder":
+            reminder_pending_sessions[session_id] = {"mode": "add reminder"}
+            return JsonResponse({'response': "What reminder would you like to add?"})
+
+        if message == "edit reminder":
             reminders = load_reminders(session_id)
             if not reminders:
                 return JsonResponse({'response': "You have no reminders to edit."})
             reminders_list = "\n".join([f"{i+1}. {r}" for i, r in enumerate(reminders)])
-            reminder_pending_sessions[session_id] = {"mode": "edit", "step": "choose_index"}
+            reminder_pending_sessions[session_id] = {"mode": "edit reminder", "step": "choose_index"}
             return JsonResponse({'response': f"Here are your reminders:\n{reminders_list}\nWhich one would you like to edit? (Please reply with the reminder number)"})
 
-        # Handle ongoing add/edit sessions
+        if message == "delete reminder":
+            reminders = load_reminders(session_id)
+            if not reminders:
+                return JsonResponse({'response': "You have no reminders to delete."})
+            reminders_list = "\n".join([f"{i+1}. {r}" for i, r in enumerate(reminders)])
+            reminder_pending_sessions[session_id] = {"mode": "delete reminder", "step": "choose_index"}
+            return JsonResponse({'response': f"Here are your reminders:\n{reminders_list}\nWhich one would you like to delete? (Please reply with the reminder number)"})
+
+        # Handle ongoing add/edit/delete sessions
         if session_id in reminder_pending_sessions:
             session_data = reminder_pending_sessions[session_id]
             mode = session_data.get("mode")
 
             reminders = load_reminders(session_id)
 
-            # Adding reminder: user just sends the reminder text
-            if mode == "add":
+            # Add reminder
+            if mode == "add reminder":
                 reminders.append(message)
                 save_reminders(session_id, reminders)
                 del reminder_pending_sessions[session_id]
                 return JsonResponse({'response': f"Got it! Reminder added: '{message}'"})
 
-            # Editing reminder
-            elif mode == "edit":
+            # Edit reminder
+            elif mode == "edit reminder":
                 step = session_data.get("step")
 
                 if step == "choose_index":
@@ -159,27 +171,14 @@ def chatbot_response(request):
 
                 elif step == "new_text":
                     index = session_data["edit_index"]
-                    reminders[index] = message  # Update reminder text
+                    reminders[index] = message
                     save_reminders(session_id, reminders)
                     del reminder_pending_sessions[session_id]
                     return JsonResponse({'response': f"Reminder #{index+1} updated successfully!"})
-                
-        if message == "delete reminders":
-            reminders = load_reminders(session_id)
-            if not reminders:
-                return JsonResponse({'response': "You have no reminders to delete."})
-            reminders_list = "\n".join([f"{i+1}. {r}" for i, r in enumerate(reminders)])
-            reminder_pending_sessions[session_id] = {"mode": "delete", "step": "choose_index"}
-            return JsonResponse({'response': f"Here are your reminders:\n{reminders_list}\nWhich one would you like to delete? (Please reply with the reminder number)"})
 
-        # Handle ongoing delete reminder session
-        if session_id in reminder_pending_sessions:
-            session_data = reminder_pending_sessions[session_id]
-            mode = session_data.get("mode")
-
-            if mode == "delete":
+            # Delete reminder
+            elif mode == "delete reminder":
                 step = session_data.get("step")
-                reminders = load_reminders(session_id)
 
                 if step == "choose_index":
                     try:
@@ -193,6 +192,26 @@ def chatbot_response(request):
                         return JsonResponse({'response': f"Deleted reminder: '{deleted_reminder}'"})
                     except ValueError:
                         return JsonResponse({'response': "Please enter a valid number."})
+
+
+        # Handle ongoing folder creation sessions
+        if session_id in folder_pending_sessions:
+            session_data = folder_pending_sessions[session_id]
+            stage = session_data.get("stage")
+
+            if stage == "name":
+                name = message.strip()
+                base_path = session_data["base_path"]
+                folder_path = os.path.join(base_path, name)
+
+                try:
+                    os.makedirs(folder_path, exist_ok=True)
+                    response = f"Folder created at: {folder_path}"
+                except Exception as e:
+                    response = f"Failed to create folder: {e}"
+
+                del folder_pending_sessions[session_id]
+                return JsonResponse({'response': response})
                     
         timer_match = re.search(r"set timer for (\d+)\s*(seconds?|minutes?|hours?)", message)
         if timer_match:
@@ -232,19 +251,28 @@ def chatbot_response(request):
         raw_message = request.POST.get('message', '').lower().strip()
         message = raw_message.translate(str.maketrans('', '', string.punctuation)).strip()
 
-        if raw_message.startswith("open ") and raw_message.endswith(".txt"):
-            filename = raw_message[5:].strip()
-            filename = filename.replace(" ", "_")
-            filepath = os.path.abspath(os.path.join("notes", filename))
+        if raw_message.lower().startswith("open note "):
+            # Extract filename inside quotes using regex
+            match = re.search(r'open note\s+"(.+\.txt)"', raw_message, re.IGNORECASE)
+            if match:
+                filename = match.group(1).strip().replace(" ", "_")
+                notes_dir = os.path.abspath("notes")
+                filepath = os.path.abspath(os.path.join(notes_dir, filename))
 
-            if os.path.isfile(filepath):
-                try:
-                    subprocess.Popen(['notepad.exe', filepath])
-                    response = f"Opening note '{filename}' in Notepad."
-                except Exception as e:
-                    response = f"Note '{filename}' found, but failed to open it. Error: {str(e)}"
+                # Prevent path traversal
+                if not filepath.startswith(notes_dir):
+                    return JsonResponse({'response': "Invalid file path."})
+
+                if os.path.isfile(filepath):
+                    try:
+                        subprocess.Popen(['notepad.exe', filepath])
+                        response = f"Opening note '{filename}' in Notepad."
+                    except Exception as e:
+                        response = f"Note '{filename}' found, but failed to open it. Error: {str(e)}"
+                else:
+                    response = f"Sorry, note '{filename}' does not exist."
             else:
-                response = f"Sorry, note '{filename}' does not exist."
+                response = "Please use the format: open note \"filename.txt\""
 
             return JsonResponse({'response': response})
 
@@ -253,21 +281,35 @@ def chatbot_response(request):
             note_pending_sessions[session_id] = {"step": "title", "title": ""}
             return JsonResponse({'response': "Sure! What should the title of the note be?"})
                 
-        if raw_message.startswith("delete ") and raw_message.endswith(".txt"):
-            filename = raw_message[7:].strip()  # remove 'delete ' part
-            filename = filename.replace(" ", "_")
-            filepath = os.path.abspath(os.path.join("notes", filename))
 
-            if os.path.isfile(filepath):
-                try:
-                    os.remove(filepath)
-                    response = f"Note '{filename}' deleted!"
-                except Exception as e:
-                    response = f"Failed to delete note '{filename}'. Error: {str(e)}"
+        if raw_message.lower().startswith("delete note "):
+            # Extract filename from quotes using regex
+            match = re.search(r'delete note\s+"(.+\.txt)"', raw_message, re.IGNORECASE)
+            if match:
+                filename = match.group(1).strip().replace(" ", "_")
+
+                # Securely resolve path
+                notes_dir = os.path.abspath("notes")
+                filepath = os.path.abspath(os.path.join(notes_dir, filename))
+
+                # Prevent path traversal attacks
+                if not filepath.startswith(notes_dir):
+                    return JsonResponse({'response': "Invalid file path."})
+
+                # Attempt to delete the file
+                if os.path.isfile(filepath):
+                    try:
+                        os.remove(filepath)
+                        response = f"Note '{filename}' deleted!"
+                    except Exception as e:
+                        response = f"Failed to delete note '{filename}'. Error: {str(e)}"
+                else:
+                    response = f"Note '{filename}' does not exist."
             else:
-                response = f"Note '{filename}' does not exist."
+                response = "Please use the format: delete note \"notename.txt\""
 
             return JsonResponse({'response': response})
+
     
         if message.startswith("calculate "):
             expression = raw_message[len("calculate "):].strip()
@@ -309,8 +351,8 @@ def chatbot_response(request):
             "what is pip": "Pip is a package manager for Python packages.",
             "what is python": "Python is a popular programming language that's beginner-friendly.",
             "what is django": "Django is a high-level Python web framework for building websites.",
-            "do you love me": "01011001 01000101 01010011 ❤️",
-            "help": "List of available commands:\n-new note\n-open note\n-delete note\n-time\n-date\n-timer\n-calculate\n-reminders\n-add reminder\n-edit reminders\n-delete reminders\n-create folder\n-open folder 'file name'\n-define (something)\n-open (website)\n-open (application)\n-clear\n-exit\n",
+
+            "help": "List of available commands:\n-new note\n-open note\n-delete note\n-time\n-date\n-timer\n-calculate\n-reminders\n-add reminder\n-edit reminders\n-delete reminders\n-create folder\n-open folder 'file name'\n-define (something)\n-open (website)\n-open (application)\n-clear\n",
         }
 
 
