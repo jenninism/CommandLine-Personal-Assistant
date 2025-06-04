@@ -279,7 +279,7 @@ def chatbot_response(request):
             else:
                 try:
                     # Evaluate safely with eval limited to math builtins only
-                    result = eval(expression, {"__builtins__": None}, {})
+                    result = eval(expression, {"_builtins_": None}, {})
                     response = f"Result: {result}"
                 except Exception as e:
                     response = f"Error calculating expression: {str(e)}"
@@ -310,8 +310,9 @@ def chatbot_response(request):
             "what is python": "Python is a popular programming language that's beginner-friendly.",
             "what is django": "Django is a high-level Python web framework for building websites.",
             "do you love me": "01011001 01000101 01010011 ❤️",
-            "help": "List of available commands:\n-new note\n-open note\n-delete note\n-time\n-date\n-timer\n-reminders\n-add reminder\n-edit reminders\n-delete reminders\n-create folder\n-open folder 'file name'\n-define (something)\n-open (website)\n-open (application)\n-clear\n-exit\n",
+            "help": "List of available commands:\n-new note\n-open note\n-delete note\n-time\n-date\n-timer\n-calculate\n-reminders\n-add reminder\n-edit reminders\n-delete reminders\n-create folder\n-open folder 'file name'\n-define (something)\n-open (website)\n-open (application)\n-clear\n-exit\n",
         }
+
 
         # Website shortcuts
         websites = {
@@ -321,13 +322,17 @@ def chatbot_response(request):
             "open twitter": "https://www.twitter.com",
             "open gmail": "https://mail.google.com",
             "open github": "https://github.com",
+            "open stackoverflow": "https://stackoverflow.com",
+            "open linkedin": "https://www.linkedin.com",
+            "open instagram": "https://www.instagram.com",
+            "open reddit": "https://www.reddit.com",
         }
 
         url = None
         response = None
 
-        
-        if message in websites:
+        print(message)
+        if message in websites: #check if the message is in the websites dictionary/kung aada ha wiki
             url = websites[message]
             response = f"Opening {message.split()[-1].capitalize()}..."
         elif any(message.startswith(q) for q in ["who is", "what is", "where is", "who was", "what are", "who are"]):
@@ -340,7 +345,6 @@ def chatbot_response(request):
                 response = "Sorry, I couldn't find anything about that."
             except Exception:
                 response = "There was a problem fetching the info."
-
         
         if session_id in folder_pending_sessions:
             stage = folder_pending_sessions[session_id]["awaiting"]
@@ -388,7 +392,7 @@ def chatbot_response(request):
             if query:
                 url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
                 response = f"Searching for '{query}' on Google..."
-                return JsonResponse({'response': response, 'url': url})  # ✅ return early
+                return JsonResponse({'response': response, 'url': url})  # return early
             else:
                 response = "What would you like me to search for?"
                 return JsonResponse({'response': response})
@@ -480,5 +484,3 @@ def chatbot_response(request):
         return JsonResponse({'response': response, 'url': url})
 
     return JsonResponse({'error': 'Invalid method'}, status=400)
-
-        

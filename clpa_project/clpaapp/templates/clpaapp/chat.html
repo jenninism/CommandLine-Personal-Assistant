@@ -9,25 +9,20 @@
 
 <body>
 
-  
   <div id="chat-container">
     <div id="chat-box">
       <!-- Initial welcome message -->
       <div class="msg bot" id="welcome-message">
-       <br> <strong>Welcome to Command-Line Personal Assistant!</strong> 
-  
-  This personal assistant can:
-
-  • Answer common questions and provide helpful responses  
-  • Display the current time and date  
-  • Open websites or links directly in your browser  
-  • Perform simple commands like 'clear', 'exit', and more  
-  • Guide you through available features using the 'help' command  
-  • Provide quick access to information, tools, and resources  
-
-  Type 'help' to view all available commands. 
-
-Please note that your spelling is correct before entering the message.
+        <br> <strong>Welcome to Command-Line Personal Assistant!</strong><br><br>
+        This personal assistant can:<br><br>
+        • Answer common questions and provide helpful responses<br>
+        • Display the current time and date<br>
+        • Open websites or links directly in your browser<br>
+        • Perform simple commands like 'clear', 'exit', and more<br>
+        • Guide you through available features using the 'help' command<br>
+        • Provide quick access to information, tools, and resources<br><br>
+        Type 'help' to view all available commands.<br><br>
+        Please ensure your spelling is correct before submitting a command.
       </div>
     </div>
 
@@ -43,12 +38,30 @@ Please note that your spelling is correct before entering the message.
     const chatForm = document.getElementById('chat-form');
     const userInput = document.getElementById('user-input');
 
-    // Save the initial welcome message
+    // Save the initial welcome message HTML
     const welcomeMessageHTML = document.getElementById('welcome-message').outerHTML;
 
     chatForm.addEventListener('submit', function(event) {
       event.preventDefault();
       const message = userInput.value.trim();
+      console.log(message)
+      
+      //Clear (tanggal na)
+      if (message == 'clear') {
+        chatBox.innerHTML = '';
+        chatBox.innerHTML = welcomeMessageHTML;
+        return;
+      }
+
+      //Exit (dre nakakatype)
+      if (message == 'exit') {
+        chatBox.innerHTML = '';
+        chatBox.innerHTML = welcomeMessageHTML;
+        userInput.disabled = true;
+        userInput.placeholder = "CLPA is closed.";
+        return;
+      }
+
       if (!message) return;
 
       appendMessage(message, 'user');
@@ -64,26 +77,34 @@ Please note that your spelling is correct before entering the message.
       })
       .then(res => res.json())
       .then(data => {
-        if(data.error){
+        if (data.error) {
           appendMessage("Error: " + data.error, 'bot');
           return;
         }
 
-        if(data.response === "[CLEAR_SCREEN]") {
-          // Clear all chat messages
+        // Handle clear command
+        if (data.response === "[CLEAR_SEARCH]") {
           chatBox.innerHTML = '';
-          // Restore the initial welcome message
           chatBox.innerHTML = welcomeMessageHTML;
-        } else {
-          appendMessage(data.response, 'bot');
+          return;
         }
 
-        if(data.url){
+        // Handle exit command
+        if (data.response.includes("Goodbye! Closing CLPA")) {
+          appendMessage(data.response, 'bot');
+          userInput.disabled = true;
+          userInput.placeholder = "CLPA is closed.";
+          return;
+        }
+
+        // Normal response
+        appendMessage(data.response, 'bot');
+
+        // Handle optional URL
+        if (data.url) {
           window.open(data.url, '_blank');
         }
       })
-
-      
       .catch(() => appendMessage("Error connecting to server.", 'bot'));
     });
 
