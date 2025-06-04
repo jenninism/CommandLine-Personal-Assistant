@@ -1,0 +1,46 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django migrations
+*/migrations/
+!*/migrations/__init__.py
+
+# Django settings/local files
+*.sqlite3
+db.sqlite3
+.env
+.env.*
+
+# Media and static files
+/media/
+/staticfiles/
+/static/
+
+# VS Code and other editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+.pip-selfcheck.json
+
+# Logs
+*.log
+
+# Coverage and testing
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+
+# MyPy and other linters
+.mypy_cache/
+.dm
