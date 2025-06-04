@@ -91,11 +91,12 @@ def chatbot_response(request):
         message = message.translate(str.maketrans('', '', string.punctuation)).strip()
         session_id = request.session.session_key or "default"
 
+        # Start adding a reminder
         if message == "add reminder":
-            reminder_pending_sessions[session_id] = True
+            reminder_pending_sessions[session_id] = {"mode": "add"}
             return JsonResponse({'response': "What should I remind you about?"})
 
-        # If user says "reminders", display all saved reminders
+        # Show all reminders
         if message == "reminders":
             reminders = load_reminders(session_id)
             if reminders:
@@ -104,14 +105,81 @@ def chatbot_response(request):
                 response_text = "You have no reminders."
             return JsonResponse({'response': response_text})
 
-        # If user is currently in the process of adding a reminder
-        if session_id in reminder_pending_sessions:
+        # Start editing reminders
+        if message == "edit reminders":
             reminders = load_reminders(session_id)
-            reminders.append(message)
-            save_reminders(session_id, reminders)
-            del reminder_pending_sessions[session_id]
-            return JsonResponse({'response': f"Got it! Reminder added: '{message}'"})
-    
+            if not reminders:
+                return JsonResponse({'response': "You have no reminders to edit."})
+            reminders_list = "\n".join([f"{i+1}. {r}" for i, r in enumerate(reminders)])
+            reminder_pending_sessions[session_id] = {"mode": "edit", "step": "choose_index"}
+            return JsonResponse({'response': f"Here are your reminders:\n{reminders_list}\nWhich one would you like to edit? (Please reply with the reminder number)"})
+
+        # Handle ongoing add/edit sessions
+        if session_id in reminder_pending_sessions:
+            session_data = reminder_pending_sessions[session_id]
+            mode = session_data.get("mode")
+
+            reminders = load_reminders(session_id)
+
+            # Adding reminder: user just sends the reminder text
+            if mode == "add":
+                reminders.append(message)
+                save_reminders(session_id, reminders)
+                del reminder_pending_sessions[session_id]
+                return JsonResponse({'response': f"Got it! Reminder added: '{message}'"})
+
+            # Editing reminder
+            elif mode == "edit":
+                step = session_data.get("step")
+
+                if step == "choose_index":
+                    try:
+                        index = int(message) - 1
+                        if index < 0 or index >= len(reminders):
+                            return JsonResponse({'response': "Invalid reminder number. Please try again."})
+                        session_data["edit_index"] = index
+                        session_data["step"] = "new_text"
+                        return JsonResponse({'response': f"Please enter the new text for reminder #{index+1}."})
+                    except ValueError:
+                        return JsonResponse({'response': "Please enter a valid number."})
+
+                elif step == "new_text":
+                    index = session_data["edit_index"]
+                    reminders[index] = message  # Update reminder text
+                    save_reminders(session_id, reminders)
+                    del reminder_pending_sessions[session_id]
+                    return JsonResponse({'response': f"Reminder #{index+1} updated successfully!"})
+                
+        if message == "delete reminders":
+            reminders = load_reminders(session_id)
+            if not reminders:
+                return JsonResponse({'response': "You have no reminders to delete."})
+            reminders_list = "\n".join([f"{i+1}. {r}" for i, r in enumerate(reminders)])
+            reminder_pending_sessions[session_id] = {"mode": "delete", "step": "choose_index"}
+            return JsonResponse({'response': f"Here are your reminders:\n{reminders_list}\nWhich one would you like to delete? (Please reply with the reminder number)"})
+
+        # Handle ongoing delete reminder session
+        if session_id in reminder_pending_sessions:
+            session_data = reminder_pending_sessions[session_id]
+            mode = session_data.get("mode")
+
+            if mode == "delete":
+                step = session_data.get("step")
+                reminders = load_reminders(session_id)
+
+                if step == "choose_index":
+                    try:
+                        index = int(message) - 1
+                        if index < 0 or index >= len(reminders):
+                            return JsonResponse({'response': "Invalid reminder number. Please try again."})
+
+                        deleted_reminder = reminders.pop(index)
+                        save_reminders(session_id, reminders)
+                        del reminder_pending_sessions[session_id]
+                        return JsonResponse({'response': f"Deleted reminder: '{deleted_reminder}'"})
+                    except ValueError:
+                        return JsonResponse({'response': "Please enter a valid number."})
+                    
         timer_match = re.search(r"set timer for (\d+)\s*(seconds?|minutes?|hours?)", message)
         if timer_match:
             amount = int(timer_match.group(1))
