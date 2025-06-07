@@ -1,1 +1,125 @@
-["1", "hahdhashd", "hdsahdshdsa"]
+[
+  "1",
+  "hahdhashd",
+  "hdsahdshdsa",
+  "activity on friday",
+  {
+    "title": "meeting",
+    "date": "2025-07-06",
+    "time": "13:52",
+    "location": "sawang",
+    "notified": false
+  },
+  {
+    "title": "meeting",
+    "date": "2025-07-06",
+    "time": "13:56",
+    "location": "sawang",
+    "notified": false
+  },
+  {
+    "title": "meeting",
+    "date": "2025-07-06",
+    "time": "14:04",
+    "location": "sawang",
+    "notified": false
+  },
+  {
+    "title": "meeting",
+    "date": "2025-06-07",
+    "time": "14:05",
+    "location": "sawang",
+    "notified": false
+  },
+  {
+    "title": "hello",
+    "date": "2025-06-07",
+    "time": "14:09",
+    "location": "asd",
+    "notified": false
+  },
+  {
+    "title": "meeting",
+    "date": "2025-06-07",
+    "time": "14:11",
+    "location": "sawang",
+    "notified": false
+  },
+  {
+    "title": "das",
+    "date": "2025-06-07",
+    "time": "14:20",
+    "location": "dsa",
+    "notified": false
+  },
+  {
+    "title": "asd",
+    "date": "2025-06-07",
+    "time": "14:23",
+    "location": "dsa",
+    "notified": false
+  },
+  {
+    "title": "dsadsa",
+    "date": "2025-06-07",
+    "time": "14:25",
+    "location": "das",
+    "notified": false
+  },
+  {
+    "title": "MEETING",
+    "date": "2025-06-07",
+    "time": "14:30",
+    "location": "dsa",
+    "notified": false
+  },
+  {
+    "title": "qwertyuiop",
+    "date": "2025-06-07",
+    "time": "14:33",
+    "location": "qwertyuio",
+    "notified": false
+  },
+  {
+    "title": "qwertyt",
+    "date": "2025-07-06",
+    "time": "14:34",
+    "location": "dsadsa",
+    "notified": false
+  },
+  {
+    "title": "qwertyu",
+    "date": "2025-06-07",
+    "time": "14:37",
+    "location": "234567",
+    "notified": true
+  },
+  {
+    "title": "MEETING",
+    "date": "2025-06-07",
+    "time": "14:43",
+    "location": "wetryuio",
+    "notified": true
+  },
+  {
+    "title": "meeting",
+    "date": "2025-06-07",
+    "time": "20:53",
+    "location": "qwerty",
+    "notified": true
+  },
+  {
+    "title": "qwert",
+    "date": "2025-06-07",
+    "time": "21:13",
+    "location": "qwertyu",
+    "notified": true
+  },
+  {
+    "title": "qwertyuiop",
+    "date": "2025-06-07",
+    "time": "21:15",
+    "location": "wergthju",
+    "notified": true
+  }
+]
