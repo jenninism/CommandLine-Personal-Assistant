@@ -121,5 +121,12 @@
     "time": "21:15",
     "location": "wergthju",
     "notified": true
+  },
+  {
+    "title": "sad",
+    "date": "hello",
+    "time": "hi",
+    "location": "sad",
+    "notified": false
   }
 ]
