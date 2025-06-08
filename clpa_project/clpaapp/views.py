@@ -11,6 +11,12 @@ import threading
 import time
 from win10toast import ToastNotifier
 
+import os
+import subprocess
+from pathlib import Path
+
+import tempfile
+
 toaster = ToastNotifier()
 REMINDERS = {}
 
@@ -196,6 +202,122 @@ def chatbot_response(request):
             request.session['edit_data'] = None
             request.session['edit_index'] = None
 
+        elif low_msg == 'search folder':
+            request.session['folder_search_state'] = 'awaiting_location_choice'
+            response = "Where do you want me to search? (Documents, Desktop)"
+
+        # Get location to search in
+        elif request.session.get('folder_search_state') == 'awaiting_location_choice':
+            location = message.lower()
+            if location == 'documents':
+                request.session['folder_base_path'] = str(Path.home() / "Documents")
+            elif location == 'desktop':
+                request.session['folder_base_path'] = str(Path.home() / "Desktop")
+            else:
+                response = "Please choose either 'Documents' or 'Desktop'."
+                return JsonResponse({'response': response})
+
+            request.session['folder_search_state'] = 'awaiting_folder_name'
+            response = "What folder name are you looking for?"
+
+        # Get folder name and search
+        elif request.session.get('folder_search_state') == 'awaiting_folder_name':
+            folder_name = message
+            base_path = request.session.get('folder_base_path')
+            found_path = None
+
+            for root, dirs, files in os.walk(base_path):
+                if folder_name in dirs:
+                    found_path = os.path.join(root, folder_name)
+                    break
+
+            if found_path:
+                subprocess.Popen(f'explorer "{found_path}"')
+                response = f"Found and opening: {found_path}"
+            else:
+                response = f"Sorry, I couldn't find a folder named '{folder_name}' in that location."
+
+            # Clear session state
+            request.session['folder_search_state'] = None
+            request.session['folder_base_path'] = None
+
+        elif low_msg == 'create folder':
+            request.session['folder_create_state'] = 'awaiting_folder_name'
+            response = "What do you want to name the folder?"
+
+        elif request.session.get('folder_create_state') == 'awaiting_folder_name':
+            request.session['new_folder_name'] = message.strip()
+            request.session['folder_create_state'] = 'awaiting_location'
+            response = "Where do you want to create it? (Documents, Desktop)"
+
+        elif request.session.get('folder_create_state') == 'awaiting_location':
+            location = message.strip().lower()
+            folder_name = request.session.get('new_folder_name')
+
+            if location == 'documents':
+                base_path = Path.home() / "Documents"
+            elif location == 'desktop':
+                base_path = Path.home() / "Desktop"
+            else:
+                response = "Please choose either 'Documents' or 'Desktop'."
+                return JsonResponse({'response': response})
+
+            full_path = base_path / folder_name
+
+            try:
+                os.makedirs(full_path, exist_ok=True)
+                subprocess.Popen(f'explorer "{full_path}"')
+                response = f"Folder '{folder_name}' created in {location.capitalize()}!"
+            except Exception as e:
+                response = f"Sorry, there was an error creating the folder: {e}"
+
+            # Clear session state
+            request.session['folder_create_state'] = None
+            request.session['new_folder_name'] = None
+
+        elif low_msg == 'create note':
+            request.session['note_create_state'] = 'awaiting_title'
+            response = "What is the title of your note?"
+
+        elif request.session.get('note_create_state') == 'awaiting_title':
+            request.session['note_title'] = message.strip()
+            request.session['note_create_state'] = 'awaiting_content'
+            response = "What should the note say?"
+
+        elif request.session.get('note_create_state') == 'awaiting_content':
+            request.session['note_content'] = message.strip()
+            request.session['note_create_state'] = 'awaiting_location'
+            response = "Where do you want to save it? (Documents or Desktop)"
+
+        elif request.session.get('note_create_state') == 'awaiting_location':
+            location = message.strip().lower()
+            note_title = request.session.get('note_title')
+            note_content = request.session.get('note_content')
+
+            if location == 'documents':
+                save_path = Path.home() / "Documents"
+            elif location == 'desktop':
+                save_path = Path.home() / "Desktop"
+            else:
+                response = "Please choose either 'Documents' or 'Desktop'."
+                return JsonResponse({'response': response})
+
+            full_path = save_path / f"{note_title}.txt"
+
+            try:
+                with open(full_path, 'w', encoding='utf-8') as f:
+                    f.write(note_content)
+                subprocess.Popen(['notepad.exe', str(full_path)])
+                response = f"Note '{note_title}' saved to {location.capitalize()} and opened in Notepad!"
+            except Exception as e:
+                response = f"Sorry, I couldn't create the note: {e}"
+
+            # Clear session state
+            request.session['note_create_state'] = None
+            request.session['note_title'] = None
+            request.session['note_content'] = None
+
+                        
             
 
 
@@ -213,12 +335,15 @@ def chatbot_response(request):
                 "- date\n"
                 "- help\n"
                 "- calculate\n"
-                "- definition\n"
+                "- define (word)\n"
                 "- open (website)\n"
                 "- add reminder\n"
                 "- show reminders\n"
                 "- edit reminder\n"
-                "- delete reminder"
+                "- delete reminder\n"
+                "- create note\n"
+                "- create folder\n"               
+                "- search folder\n"
             )
         elif low_msg.startswith('define '):
             word = message[7:].strip()
