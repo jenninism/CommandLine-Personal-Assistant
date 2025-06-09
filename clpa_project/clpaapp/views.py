@@ -23,26 +23,26 @@ REMINDERS = {}
 def chat_page(request):
     return render(request, 'clpaapp/chat.html')
 
-def reminder_checker():
-    while True:
-        now = datetime.now()
-        for session_key, reminders in list(REMINDERS.items()):
-            for reminder in reminders[:]:  # copy list to avoid mutation issues
-                dt = datetime.strptime(reminder['date'] + ' ' + reminder['time'], '%Y-%m-%d %H:%M')
-                if now >= dt:
-                    # Show notification
-                    toaster.show_toast(
-                        "Reminder",
-                        f"{reminder['title']} at {reminder['location']}",
-                        duration=10
-                    )
-                    reminders.remove(reminder)
-            if not reminders:
-                REMINDERS.pop(session_key)
-        time.sleep(30)
+# def reminder_checker():
+#     while True:
+#         now = datetime.now()
+#         for session_key, reminders in list(REMINDERS.items()):
+#             for reminder in reminders[:]:  # copy list to avoid mutation issues
+#                 dt = datetime.strptime(reminder['date'] + ' ' + reminder['time'], '%Y-%m-%d %H:%M')
+#                 if now >= dt:
+#                     # Show notification
+#                     toaster.show_toast(
+#                         "Reminder",
+#                         f"{reminder['title']} at {reminder['location']}",
+#                         duration=10
+#                     )
+#                     reminders.remove(reminder)
+#             if not reminders:
+#                 REMINDERS.pop(session_key)
+#         time.sleep(30)
 
-# Start background thread on server start
-threading.Thread(target=reminder_checker, daemon=True).start()
+# # Start background thread on server start
+# threading.Thread(target=reminder_checker, daemon=True).start()
 
 
 @csrf_exempt
