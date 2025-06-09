@@ -9,7 +9,7 @@ import webbrowser
 from urllib.parse import urlparse, quote_plus
 import threading
 import time
-from win10toast import ToastNotifier
+# from win10toast import ToastNotifier
 
 import os
 import subprocess
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import tempfile
 
-toaster = ToastNotifier()
+# toaster = ToastNotifier()
 REMINDERS = {}
 
 def chat_page(request):
